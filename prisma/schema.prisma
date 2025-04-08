@@ -14,11 +14,40 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())       // Unique identifier for each user
-  username      String                                  // The user's name
-  email         String   @unique                    // Unique email for login and communication
-  password      String                                  // Hashed password for security
-  createdAt     DateTime @default(now())              // Timestamp when the user was created
-  updatedAt     DateTime @updatedAt                   // Timestamp updated whenever the record is modified
-  deletedAt     DateTime?                               // Optional field for soft deletion
+  id        String    @id @default(uuid()) // Unique identifier for each user
+  username  String // The user's name
+  email     String    @unique // Unique email for login and communication
+  password  String // Hashed password for security
+  createdAt DateTime  @default(now()) // Timestamp when the user was created
+  updatedAt DateTime  @updatedAt // Timestamp updated whenever the record is modified
+  deletedAt DateTime? // Optional field for soft deletion
+
+  // Add the following relation fields
+  createdGroups Group[] // Groups created by the user
+  groupMembers  GroupMember[] // Group memberships of the user
+}
+
+model Group {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  createdById String
+  members     GroupMember[]
+  // expenses    Expense[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+}
+
+model GroupMember {
+  id        String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  group     Group     @relation(fields: [groupId], references: [id])
+  groupId   String
+  joinedAt  DateTime  @default(now())
+  deletedAt DateTime?
+
+  @@unique([userId, groupId])
 }
