@@ -9,18 +9,29 @@ export const searchUsers  = async(req:Request,res:Response):Promise<void>=>{
             return;
         }
         const users = await prisma.user.findMany({
-            where:{
-                OR:[
-                    { username: { contains: query, mode: 'insensitive' } },
-                    { email: { contains: query, mode: 'insensitive' } }
-                ]
+            where: {
+              OR: [
+                {
+                  username: {
+                    contains: query,
+                    mode: "insensitive", // case insensitive search
+                  },
+                },
+                {
+                  email: {
+                    contains: query,
+                    mode: "insensitive",
+                  },
+                },
+              ],
             },
-            select:{
-                id: true,
-                username: true,
-                email: true,
-            }
-        });
+            take: 10,
+            select: {
+              id: true,
+              username: true,
+              email: true, // include email now that you're searching by it
+            },
+          });
         res.json({users});
     }
     catch(error){
