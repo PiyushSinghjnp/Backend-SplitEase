@@ -20,7 +20,7 @@ app.use(express.json());
 // Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1', friendRoutes);
-app.use('/api/users', searchRoutes);
+app.use('/api/v1/users', searchRoutes);
 app.use('/api/v1/protected', protectedRoutes);
 // app.use('/api/v1/group', groupRoutes); 
 // Start the server
