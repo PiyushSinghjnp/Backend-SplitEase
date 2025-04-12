@@ -3,7 +3,7 @@ import prisma from '../utils/prismaClient';
 
 export const searchUsers  = async(req:Request,res:Response):Promise<void>=>{
     try{
-        const query = req.query.query as string;
+        const query = req.query.user as string;
         if(!query || query.trim() === ''){
             res.status(400).json({error:'Seach Query is required'});
             return;
