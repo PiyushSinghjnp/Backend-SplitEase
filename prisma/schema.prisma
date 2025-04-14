@@ -23,6 +23,8 @@ model User {
   receivedFriendRequests FriendRequest[]    @relation("ReceivedRequests")   // Friend requests received by user
   friendships1           Friendship[]       @relation("FriendshipUser1")    // Friendships where user is user1
   friendships2           Friendship[]       @relation("FriendshipUser2")    // Friendships where user is user2
+  paidExpenses           Expense[]          @relation("PaidExpenses")       // Expenses paid by user
+  expenseSplits  ExpenseSplit[] // Splits of expenses where user is involved
 }
 
 model Group {
@@ -32,7 +34,7 @@ model Group {
   createdBy   User          @relation(fields: [createdById], references: [id])
   createdById String
   members     GroupMember[]
-  // expenses    Expense[]
+  expenses    Expense[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   deletedAt   DateTime?
@@ -70,6 +72,29 @@ model Friendship {
   createdAt  DateTime @default(now())
 
   @@unique([user1Id, user2Id])
+}
+
+model Expense {
+  id          String        @id @default(uuid())
+  description String
+  amount      Decimal
+  paidBy      User          @relation("PaidExpenses", fields: [paidById], references: [id])
+  paidById    String
+  group       Group         @relation(fields: [groupId], references: [id])
+  groupId     String
+  splits      ExpenseSplit[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ExpenseSplit {
+  id         String   @id @default(uuid())
+  expense    Expense  @relation(fields: [expenseId], references: [id])
+  expenseId  String
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  share      Decimal
+  createdAt  DateTime @default(now())
 }
 enum RequestStatus {
   PENDING
