@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Request } from 'express';
 
 // User schemas
 export const registerSchema = z.object({
@@ -64,7 +65,7 @@ export interface CustomRequest extends Request {
   user?: {
     userId: string;
   };
-} 
+}
 
 // Settlement schemas
 export const createSettlementSchema = z.object({
