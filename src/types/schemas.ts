@@ -81,3 +81,54 @@ export const updateSettlementSchema = z.object({
     .positive('Amount must be positive')
     .min(0.01, 'Amount must be at least 0.01')
 });
+
+// Auth schemas
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, 'Refresh token is required')
+});
+
+// Group schemas
+export const getGroupDetailsSchema = z.object({
+  params: z.object({
+    groupId: z.string().uuid('Invalid group ID')
+  })
+});
+
+export const getAllUserGroupsSchema = z.object({
+  user: z.object({
+    userId: z.string().uuid('Invalid user ID')
+  })
+});
+
+// Search schemas
+export const searchUsersSchema = z.object({
+  query: z.object({
+    searchTerm: z.string().min(1, 'Search term is required')
+  })
+});
+
+// Friend schemas
+export const getFriendRequestsSchema = z.object({
+  user: z.object({
+    userId: z.string().uuid('Invalid user ID')
+  })
+});
+
+export const getFriendsListSchema = z.object({
+  user: z.object({
+    userId: z.string().uuid('Invalid user ID')
+  })
+});
+
+// Settlement schemas
+export const getSettlementHistorySchema = z.object({
+  params: z.object({
+    groupId: z.string().uuid('Invalid group ID')
+  })
+});
+
+export const getSettlementOptionsSchema = z.object({
+  params: z.object({
+    groupId: z.string().uuid('Invalid group ID')
+  })
+});

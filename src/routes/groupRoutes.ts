@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middlewares/authMiddleware';
 import { createGroup, addGroupMember, getAllUserGroups, getGroupDetails } from '../controllers/groupController';
-import { createGroupSchema, addGroupMemberSchema } from '../types/schemas';
+import { 
+  createGroupSchema, 
+  addGroupMemberSchema, 
+  getGroupDetailsSchema,
+  getAllUserGroupsSchema 
+} from '../types/schemas';
 import { validate } from '../middlewares/validationMiddleware';
 
 const router = Router();
@@ -18,9 +23,9 @@ router.post('/:groupId/add-member', authenticateToken, validate(addGroupMemberSc
 // // Get all expenses for a group
 // router.get('/:groupId/expenses', authenticateToken, getGroupExpenses);
 // Get all user's groups with balances
-router.get('/all', authenticateToken, getAllUserGroups);
+router.get('/all', authenticateToken, validate(getAllUserGroupsSchema), getAllUserGroups);
 
 // Get detailed group information
-router.get('/:groupId', authenticateToken, getGroupDetails);
+router.get('/:groupId', authenticateToken, validate(getGroupDetailsSchema), getGroupDetails);
 
 export default router;
