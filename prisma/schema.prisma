@@ -25,6 +25,11 @@ model User {
   friendships2           Friendship[]       @relation("FriendshipUser2")    // Friendships where user is user2
   paidExpenses           Expense[]          @relation("PaidExpenses")       // Expenses paid by user
   expenseSplits  ExpenseSplit[] // Splits of expenses where user is involved
+  lending    Balance[] @relation("lends")
+  borrowing  Balance[] @relation("borrows")
+   settlementsAsPayer    Settlement[] @relation("settles")
+  settlementsAsReceiver Settlement[] @relation("receivesSettlement")
+
 }
 
 model Group {
@@ -35,10 +40,13 @@ model Group {
   createdById String
   members     GroupMember[]
   expenses    Expense[]
+  balances    Balance[]     
+   settlements Settlement[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   deletedAt   DateTime?
 }
+
 
 model GroupMember {
   id        String    @id @default(uuid())
@@ -51,6 +59,7 @@ model GroupMember {
 
   @@unique([userId, groupId])
 }
+
 
 model FriendRequest {
   id          String    @id @default(uuid())
@@ -95,6 +104,33 @@ model ExpenseSplit {
   userId     String
   share      Decimal
   createdAt  DateTime @default(now())
+}
+
+model Balance {
+  id         String   @id @default(uuid())
+  group      Group    @relation(fields: [groupId], references: [id])
+  groupId    String
+  lender     User     @relation("lends", fields: [lenderId], references: [id])
+  lenderId   String
+  borrower   User     @relation("borrows", fields: [borrowerId], references: [id])
+  borrowerId String
+  amount     Decimal
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([groupId, lenderId, borrowerId])
+}
+// prisma/schema.prisma
+model Settlement {
+  id          String   @id @default(uuid())
+  group       Group    @relation(fields: [groupId], references: [id])
+  groupId     String
+  paidBy      User     @relation("settles", fields: [paidById], references: [id])
+  paidById    String
+  paidTo      User     @relation("receivesSettlement", fields: [paidToId], references: [id])
+  paidToId    String
+  amount      Decimal
+  createdAt   DateTime @default(now())
 }
 enum RequestStatus {
   PENDING

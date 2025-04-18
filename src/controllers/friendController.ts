@@ -136,7 +136,7 @@ export async function getFriends(req: CustomRequest, res: Response): Promise<voi
 }
 }
 
-// this function will get the relationship status of the user with the friend when populatiing users in the search bar 
+// this function will get the relationship status of the two users
 export async function getUserRelationship(req: CustomRequest, res: Response): Promise<void> {
   try {
     const userId = req.user?.userId;
