@@ -55,7 +55,7 @@ export const searchUsers = async (req: CustomRequest, res: Response): Promise<vo
     // Enhance users with their relationship status
     const enhancedUsers = users.map(user => ({
       ...user,
-      relationshipStatus: relationshipMap.get(user.id) || 'NOT_CONNECTED' // Adding the property relationshipStatus to the user object
+      relationshipStatus: relationshipMap.get(user.id) || 'NOT_CONNECTED'
     }));
 
     res.json({ users: enhancedUsers });

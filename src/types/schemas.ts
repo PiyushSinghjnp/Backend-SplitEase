@@ -103,7 +103,7 @@ export const getAllUserGroupsSchema = z.object({
 // Search schemas
 export const searchUsersSchema = z.object({
   query: z.object({
-    searchTerm: z.string().min(1, 'Search term is required')
+    user: z.string().min(1, 'Search query is required')
   })
 });
 

@@ -26,7 +26,7 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
         password: hashedPassword,
       },
     });
-    const token = jwt.sign({ userId: newUser.id }, JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ userId: newUser.id, username:newUser.username,email:newUser.email }, JWT_SECRET, { expiresIn: '48h' });
 
     res.status(201).json({
       message: 'User registered',
