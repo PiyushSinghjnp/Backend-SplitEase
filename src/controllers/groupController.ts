@@ -3,23 +3,44 @@ import prisma from '../utils/prismaClient';
 import { getUserBalancesInGroup } from '../utils/balanceUtils';
 import { CustomRequest } from '../types/schemas';
 
-export const createGroup = async (req: Request, res: Response): Promise<void> => {
-    const {userId, name, description } = req.body;
-  
-    try {
-      const newGroup = await prisma.group.create({
+export const createGroup = async (req: CustomRequest, res: Response): Promise<void> => {
+  try {
+    const { name, description } = req.body;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    // Create group and add creator as member in a transaction
+    const newGroup = await prisma.$transaction(async (prisma) => {
+      // Create the group
+      const group = await prisma.group.create({
         data: {
           name,
           description,
           createdById: userId,
         },
       });
-      res.status(201).json(newGroup);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Error creating group' });
-    }
-  };
+
+      // Add creator as member
+      await prisma.groupMember.create({
+        data: {
+          userId,
+          groupId: group.id,
+        },
+      });
+
+      return group;
+    });
+
+    res.status(201).json(newGroup);
+  } catch (error) {
+    console.error('Error creating group:', error);
+    res.status(500).json({ error: 'Failed to create group' });
+  }
+};
   
 export const addGroupMember = async (req: Request, res: Response): Promise<void> => {
   const { userId, groupId } = req.body;
@@ -172,6 +193,7 @@ export async function getGroupDetails(req: CustomRequest, res: Response): Promis
         userId
       }
     });
+    console.log(membership);
 
     if (!membership) {
       res.status(403).json({ error: 'You are not a member of this group' });
