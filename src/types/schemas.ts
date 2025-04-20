@@ -116,12 +116,6 @@ export const getGroupDetailsSchema = z.object({
   })
 });
 
-export const getAllUserGroupsSchema = z.object({
-  user: z.object({
-    userId: z.string().uuid('Invalid user ID')
-  })
-});
-
 // Search schemas
 export const searchUsersSchema = z.object({
   query: z.object({
@@ -133,13 +127,19 @@ export const searchUsersSchema = z.object({
 export const getFriendRequestsSchema = z.object({
   user: z.object({
     userId: z.string().uuid('Invalid user ID')
-  })
+  }).optional(),
+  body: z.object({}).optional(),
+  query: z.object({}).optional(),
+  params: z.object({}).optional()
 });
 
 export const getFriendsListSchema = z.object({
   user: z.object({
     userId: z.string().uuid('Invalid user ID')
-  })
+  }).optional(),
+  body: z.object({}).optional(),
+  query: z.object({}).optional(),
+  params: z.object({}).optional()
 });
 
 // Settlement schemas

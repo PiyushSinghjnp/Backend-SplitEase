@@ -12,13 +12,13 @@ router.post('/requests', authenticateToken, validate(sendFriendRequestSchema), s
 // Respond to a friend request
 router.put('/requests/:id', authenticateToken, validate(respondFriendRequestSchema), respondFriendRequest);
 
-// Get all friends
-router.get('/friends', authenticateToken, getFriends);
+// Get friends list
+router.get('/list', authenticateToken, getFriends);
 
-// Get relationship status with a user
-router.get('/relationship/:userId', authenticateToken, getUserRelationship);
+// Get user relationship status
+router.get('/relationship/:targetUserId', authenticateToken, getUserRelationship);
 
 // Get pending friend requests
-router.get('/requests/pending', authenticateToken, getPendingRequests);
+router.get('/pending', authenticateToken, getPendingRequests);
 
 export default router;
