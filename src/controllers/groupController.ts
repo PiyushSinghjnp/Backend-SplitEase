@@ -74,11 +74,30 @@ export async function getAllUserGroups(req: CustomRequest, res: Response): Promi
       return;
     }
 
-    // Get all groups where user is a member
+    // Get all groups where user is a member or creator
     const groups = await prisma.group.findMany({
       where: {
+        OR: [
+          {
+            members: {
+              some: { userId }
+            }
+          },
+          {
+            createdById: userId
+          }
+        ]
+      },
+      include: {
         members: {
-          some: { userId }
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true
+              }
+            }
+          }
         }
       }
     });
@@ -114,7 +133,11 @@ export async function getAllUserGroups(req: CustomRequest, res: Response): Promi
             amount: b.amount,
             type: 'you owe'
           }))
-        ]
+        ],
+        members: group.members.map(member => ({
+          id: member.user.id,
+          username: member.user.username
+        }))
       };
     }));
 
