@@ -27,8 +27,13 @@ export const createGroupSchema = z.object({
 
 export const addGroupMemberSchema = z.object({
   body: z.object({
-    userId: z.string().uuid('Invalid user ID'),
+    userId: z.string().uuid('Invalid user ID').optional(),
+    userIds: z.array(z.string().uuid('Invalid user ID')).optional(),
     groupId: z.string().uuid('Invalid group ID')
+  })
+  .refine(data => data.userId !== undefined || (data.userIds !== undefined && data.userIds.length > 0), {
+    message: 'Either userId or userIds must be provided',
+    path: ['body']
   })
 });
 

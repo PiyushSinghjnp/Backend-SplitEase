@@ -41,9 +41,9 @@ export const createGroup = async (req: CustomRequest, res: Response): Promise<vo
     res.status(500).json({ error: 'Failed to create group' });
   }
 };
-  
+
 export const addGroupMember = async (req: Request, res: Response): Promise<void> => {
-  const { userId, groupId } = req.body;
+  const { userId, userIds, groupId } = req.body;
 
   try {
     // Check if the group exists
@@ -56,36 +56,76 @@ export const addGroupMember = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Check if the user is already a member of the group
-    const existingMember = await prisma.groupMember.findUnique({
-      where: {
-        userId_groupId: {
-          userId,
-          groupId,
-        },
-      },
-    });
+    // Handle both single user and multiple users
+    const usersToAdd: string[] = [];
 
-    if (existingMember) {
-      res.status(400).json({ error: 'User is already a member of this group' });
+    // If userId is provided, add it to the array
+    if (userId) {
+      usersToAdd.push(userId);
+    }
+
+    // If userIds array is provided, add them to the array
+    if (userIds && Array.isArray(userIds) && userIds.length > 0) {
+      usersToAdd.push(...userIds);
+    }
+
+    // If no users to add, return an error
+    if (usersToAdd.length === 0) {
+      res.status(400).json({ error: 'No users specified to add to the group' });
       return;
     }
 
-    // Add the user to the group
-    const newMember = await prisma.groupMember.create({
-      data: {
-        user: { connect: { id: userId } },
-        group: { connect: { id: groupId } },
+    // Get existing members to avoid duplicates
+    const existingMembers = await prisma.groupMember.findMany({
+      where: {
+        groupId,
+        userId: { in: usersToAdd },
       },
     });
 
-    res.status(201).json(newMember);
+    const existingMemberIds = existingMembers.map(member => member.userId);
+    const newMemberIds = usersToAdd.filter((id: string) => !existingMemberIds.includes(id));
+
+    // If all users are already members, return an error
+    if (newMemberIds.length === 0) {
+      res.status(400).json({
+        error: usersToAdd.length === 1
+          ? 'User is already a member of this group'
+          : 'All users are already members of this group'
+      });
+      return;
+    }
+
+    // Add new members in a transaction
+    const newMembers = await prisma.$transaction(
+      newMemberIds.map((userId: string) =>
+        prisma.groupMember.create({
+          data: {
+            user: { connect: { id: userId } },
+            group: { connect: { id: groupId } },
+          },
+        })
+      )
+    );
+
+    // Return appropriate response based on number of users added
+    if (newMembers.length === 1 && !userIds) {
+      // Single user was added (using userId parameter)
+      res.status(201).json(newMembers[0]);
+    } else {
+      // Multiple users were added or single user was added using userIds array
+      res.status(201).json({
+        message: `Added ${newMembers.length} new member${newMembers.length === 1 ? '' : 's'} to the group`,
+        addedMembers: newMembers,
+        skippedMembers: existingMemberIds,
+      });
+    }
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error adding group member' });
+    console.error('Error adding group member(s):', error);
+    res.status(500).json({ error: 'Error adding group member(s)' });
   }
 };
-  
+
 export async function getAllUserGroups(req: CustomRequest, res: Response): Promise<void> {
   try {
     const userId = req.user?.userId;
@@ -126,7 +166,7 @@ export async function getAllUserGroups(req: CustomRequest, res: Response): Promi
     // Get balances for each group using existing function
     const formattedGroups = await Promise.all(groups.map(async (group) => {
       const balances = await getUserBalancesInGroup(userId, group.id);
-      
+
       // Calculate total balance
       const totalOwed = balances.youAreOwed.reduce((sum, balance) => sum + balance.amount, 0);
       const totalOwe = balances.youOwe.reduce((sum, balance) => sum + balance.amount, 0);
@@ -253,7 +293,7 @@ export async function getGroupDetails(req: CustomRequest, res: Response): Promis
     group.expenses.forEach(expense => {
       const date = new Date(expense.createdAt);
       const monthYear = `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
-      
+
       const userSplit = expense.splits.find(split => split.userId === userId);
       const userShare = userSplit ? parseFloat(userSplit.share.toString()) : 0;
       const totalAmount = parseFloat(expense.amount.toString());
@@ -313,8 +353,8 @@ export async function getGroupDetails(req: CustomRequest, res: Response): Promis
       id: group.id,
       name: group.name,
       totalBalance,
-      balanceText: totalBalance > 0 ? `You are owed ₹${totalBalance.toFixed(2)} overall` : 
-                   totalBalance < 0 ? `You owe ₹${Math.abs(totalBalance).toFixed(2)} overall` : 
+      balanceText: totalBalance > 0 ? `You are owed ₹${totalBalance.toFixed(2)} overall` :
+                   totalBalance < 0 ? `You owe ₹${Math.abs(totalBalance).toFixed(2)} overall` :
                    'All settled up!',
       individualBalances: individualBalances.sort((a, b) => b.amount - a.amount),
       expensesByMonth,
