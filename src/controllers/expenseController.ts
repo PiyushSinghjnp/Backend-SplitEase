@@ -10,7 +10,7 @@ import {
 
 export async function createExpense(req: CustomRequest, res: Response): Promise<void> {
   try {
-    const { description, amount, groupId, splittingType, splits } = req.body;
+    const { description, amount, groupId, splittingType, splits, participantIds, ratios } = req.body;
     const userId = req.user?.userId;
 
     // Now we should validate that group is existing or not 
@@ -42,14 +42,64 @@ export async function createExpense(req: CustomRequest, res: Response): Promise<
 
     // Handling different splitting types
     if (splittingType === "Equal") {
-      const memberCount = group.members.length;
+      // If participantIds is provided, use it to select specific members for equal splitting
+      let selectedMembers = group.members;
+      
+      if (participantIds && Array.isArray(participantIds) && participantIds.length > 0) {
+        // Filter members to only include those in participantIds
+        selectedMembers = group.members.filter(member => 
+          participantIds.includes(member.userId)
+        );
+        
+        // Validate that at least one member is selected
+        if (selectedMembers.length === 0) {
+          res.status(400).json({ message: "No valid participants selected for splitting" });
+          return;
+        }
+      }
+      
+      const memberCount = selectedMembers.length;
       const shareAmount = amount / memberCount;
-      // iterate over the members and create the splits
-      const splitData = group.members.map(member => ({
+      
+      // Create splits only for selected members
+      const splitData = selectedMembers.map(member => ({
         expenseId: expense.id,
         userId: member.userId,
         share: shareAmount
       }));
+      
+      await prisma.expenseSplit.createMany({
+        data: splitData
+      });
+    } else if (splittingType === "Ratio" && ratios && Array.isArray(ratios) && ratios.length > 0) {
+      // Validate that all participants exist in the group
+      const participantIds = ratios.map(ratio => ratio.userId);
+      const validParticipants = group.members.filter(member => 
+        participantIds.includes(member.userId)
+      );
+      
+      if (validParticipants.length !== participantIds.length) {
+        res.status(400).json({ message: "Some participants are not members of this group" });
+        return;
+      }
+      
+      // Calculate total ratio sum
+      const totalRatio = ratios.reduce((sum, item) => sum + item.ratio, 0);
+      
+      if (totalRatio <= 0) {
+        res.status(400).json({ message: "Total ratio must be greater than zero" });
+        return;
+      }
+      
+      // Calculate individual shares based on ratios
+      const splitData = ratios.map(ratio => {
+        const share = (ratio.ratio / totalRatio) * amount;
+        return {
+          expenseId: expense.id,
+          userId: ratio.userId,
+          share: parseFloat(share.toFixed(2)) // Round to 2 decimal places
+        };
+      });
       
       await prisma.expenseSplit.createMany({
         data: splitData
@@ -85,7 +135,7 @@ export async function createExpense(req: CustomRequest, res: Response): Promise<
 export async function updateExpense(req: CustomRequest, res: Response): Promise<void> {
   try {
     const { expenseId } = req.params;
-    const { description, amount, splittingType, splits } = req.body;
+    const { description, amount, splittingType, splits, participantIds, ratios } = req.body;
     const userId = req.user?.userId;
     
     if (!userId) {
@@ -125,13 +175,65 @@ export async function updateExpense(req: CustomRequest, res: Response): Promise<
       });
       
       if (splittingType === "Equal") {
-        const memberCount = expense.group.members.length;
+        // If participantIds is provided, use it to select specific members for equal splitting
+        let selectedMembers = expense.group.members;
+        
+        if (participantIds && Array.isArray(participantIds) && participantIds.length > 0) {
+          // Filter members to only include those in participantIds
+          selectedMembers = expense.group.members.filter(member => 
+            participantIds.includes(member.userId)
+          );
+          
+          // Validate that at least one member is selected
+          if (selectedMembers.length === 0) {
+            res.status(400).json({ message: "No valid participants selected for splitting" });
+            return;
+          }
+        }
+        
+        const memberCount = selectedMembers.length;
         const shareAmount = (amount || expense.amount) / memberCount;
-        const splitData = expense.group.members.map(member => ({
+        
+        // Create splits only for selected members
+        const splitData = selectedMembers.map(member => ({
           expenseId,
           userId: member.userId,
           share: shareAmount
         }));
+        
+        await prisma.expenseSplit.createMany({
+          data: splitData
+        });
+      } else if (splittingType === "Ratio" && ratios && Array.isArray(ratios) && ratios.length > 0) {
+        // Validate that all participants exist in the group
+        const participantIds = ratios.map(ratio => ratio.userId);
+        const validParticipants = expense.group.members.filter(member => 
+          participantIds.includes(member.userId)
+        );
+        
+        if (validParticipants.length !== participantIds.length) {
+          res.status(400).json({ message: "Some participants are not members of this group" });
+          return;
+        }
+        
+        // Calculate total ratio sum
+        const totalRatio = ratios.reduce((sum, item) => sum + item.ratio, 0);
+        
+        if (totalRatio <= 0) {
+          res.status(400).json({ message: "Total ratio must be greater than zero" });
+          return;
+        }
+        
+        // Calculate individual shares based on ratios
+        const expenseAmount = amount || expense.amount;
+        const splitData = ratios.map(ratio => {
+          const share = (ratio.ratio / totalRatio) * expenseAmount;
+          return {
+            expenseId,
+            userId: ratio.userId,
+            share: parseFloat(share.toFixed(2)) // Round to 2 decimal places
+          };
+        });
         
         await prisma.expenseSplit.createMany({
           data: splitData

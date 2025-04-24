@@ -43,10 +43,15 @@ export const createExpenseSchema = z.object({
     description: z.string().min(3, 'Description must be at least 3 characters'),
     amount: z.number().positive('Amount must be positive'),
     groupId: z.string().uuid('Invalid group ID'),
-    splittingType: z.enum(['Equal', 'custom']),
+    splittingType: z.enum(['Equal', 'custom', 'Ratio']),
     splits: z.array(z.object({
       userId: z.string().uuid('Invalid user ID'),
       share: z.number().positive('Share must be positive')
+    })).optional(),
+    participantIds: z.array(z.string().uuid('Invalid user ID')).optional(),
+    ratios: z.array(z.object({
+      userId: z.string().uuid('Invalid user ID'),
+      ratio: z.number().int().positive('Ratio must be a positive integer')
     })).optional()
   })
 });
@@ -55,10 +60,15 @@ export const updateExpenseSchema = z.object({
   body: z.object({
     description: z.string().min(3, 'Description must be at least 3 characters').optional(),
     amount: z.number().positive('Amount must be positive').optional(),
-    splittingType: z.enum(['Equal', 'custom']).optional(),
+    splittingType: z.enum(['Equal', 'custom', 'Ratio']).optional(),
     splits: z.array(z.object({
       userId: z.string().uuid('Invalid user ID'),
       share: z.number().positive('Share must be positive')
+    })).optional(),
+    participantIds: z.array(z.string().uuid('Invalid user ID')).optional(),
+    ratios: z.array(z.object({
+      userId: z.string().uuid('Invalid user ID'),
+      ratio: z.number().int().positive('Ratio must be a positive integer')
     })).optional()
   })
 });
