@@ -10,7 +10,7 @@ import {
 
 export async function createExpense(req: CustomRequest, res: Response): Promise<void> {
   try {
-    const { description, amount, groupId, splittingType, splits, participantIds, ratios } = req.body;
+    const { description, amount, groupId, splittingType, splits, participantIds, ratios, paidById } = req.body;
     const userId = req.user?.userId;
 
     // Now we should validate that group is existing or not 
@@ -23,11 +23,25 @@ export async function createExpense(req: CustomRequest, res: Response): Promise<
       res.status(404).json({ message: "Group not found" });
       return;
     }
+    
     // Check if user is member of group or not 
     const isMember = group.members.some((member) => member.userId === userId);
     if (!isMember) {
       res.status(403).json({ message: "You are not a member of this group" });
       return;
+    }
+    
+    // Determine who paid for the expense
+    let actualPaidById = userId; // Default to the current user
+    
+    // If paidById is provided, validate that user is a member of the group
+    if (paidById) {
+      const isPaidByMember = group.members.some((member) => member.userId === paidById);
+      if (!isPaidByMember) {
+        res.status(400).json({ message: "The specified payer is not a member of this group" });
+        return;
+      }
+      actualPaidById = paidById;
     }
 
     // Create expense
@@ -35,7 +49,7 @@ export async function createExpense(req: CustomRequest, res: Response): Promise<
       data: {
         description,
         amount: parseFloat(amount),
-        paidById: userId,
+        paidById: actualPaidById,
         groupId
       }
     });
@@ -122,9 +136,22 @@ export async function createExpense(req: CustomRequest, res: Response): Promise<
     // Update if  balance exist otherwise create a new balance
     await updateBalancesForExpense(expense.id);
 
+    // Get the complete expense with payer details to return in the response
+    const completeExpense = await prisma.expense.findUnique({
+      where: { id: expense.id },
+      include: {
+        paidBy: {
+          select: {
+            id: true,
+            username: true
+          }
+        }
+      }
+    });
+
     res.status(201).json({
       message: 'Expense created successfully',
-      expense
+      expense: completeExpense
     });
   } catch (error) {
     console.error('Error creating expense:', error);
@@ -135,7 +162,7 @@ export async function createExpense(req: CustomRequest, res: Response): Promise<
 export async function updateExpense(req: CustomRequest, res: Response): Promise<void> {
   try {
     const { expenseId } = req.params;
-    const { description, amount, splittingType, splits, participantIds, ratios } = req.body;
+    const { description, amount, splittingType, splits, participantIds, ratios, paidById } = req.body;
     const userId = req.user?.userId;
     
     if (!userId) {
@@ -158,12 +185,26 @@ export async function updateExpense(req: CustomRequest, res: Response): Promise<
       return;
     }
     
+    // Handle paidById update
+    let newPaidById = expense.paidById;
+    
+    if (paidById) {
+      // Validate the new payer is a group member
+      const isPaidByMember = expense.group.members.some((member) => member.userId === paidById);
+      if (!isPaidByMember) {
+        res.status(400).json({ message: "The specified payer is not a member of this group" });
+        return;
+      }
+      newPaidById = paidById;
+    }
+    
     // Update expense basic details 
     const updatedExpense = await prisma.expense.update({
       where: { id: expenseId },
       data: {
         description: description || expense.description,
         amount: amount ? parseFloat(amount) : expense.amount,
+        paidById: newPaidById
       }
     });
 
@@ -262,6 +303,10 @@ export async function updateExpense(req: CustomRequest, res: Response): Promise<
       }
       
       // Recalculate balances for this expense
+      await updateBalancesForExpense(expenseId, true);
+    } else if (paidById && paidById !== expense.paidById) {
+      // If only the payer changed but not the amount or splitting type,
+      // we still need to recalculate balances
       await updateBalancesForExpense(expenseId, true);
     }
     

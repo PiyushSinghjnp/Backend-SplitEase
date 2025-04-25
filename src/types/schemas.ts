@@ -43,6 +43,7 @@ export const createExpenseSchema = z.object({
     description: z.string().min(3, 'Description must be at least 3 characters'),
     amount: z.number().positive('Amount must be positive'),
     groupId: z.string().uuid('Invalid group ID'),
+    paidById: z.string().uuid('Invalid user ID').optional(),
     splittingType: z.enum(['Equal', 'custom', 'Ratio']),
     splits: z.array(z.object({
       userId: z.string().uuid('Invalid user ID'),
@@ -60,6 +61,7 @@ export const updateExpenseSchema = z.object({
   body: z.object({
     description: z.string().min(3, 'Description must be at least 3 characters').optional(),
     amount: z.number().positive('Amount must be positive').optional(),
+    paidById: z.string().uuid('Invalid user ID').optional(),
     splittingType: z.enum(['Equal', 'custom', 'Ratio']).optional(),
     splits: z.array(z.object({
       userId: z.string().uuid('Invalid user ID'),
